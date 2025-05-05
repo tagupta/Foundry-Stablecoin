@@ -15,8 +15,8 @@
 
 - version
 - imports
-- errors
 - interfaces, libraries and contracts
+- errors
 - type declarations
 - state variables
 - events
