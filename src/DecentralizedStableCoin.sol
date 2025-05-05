@@ -22,7 +22,7 @@ contract DecentralizedStablecoin is ERC20Burnable, Ownable {
     string constant SYMBOL = "DSC";
 
     //Intial owner of this token is the DSC Engine, that'll going to govern the mechanics of this token
-    constructor(address _dscEngine) ERC20(NAME, SYMBOL) Ownable(_dscEngine) {}
+    constructor() ERC20(NAME, SYMBOL) Ownable(msg.sender) {}
 
     //Override the burn function from the ERC20 burnable contract
     function burn(uint256 value) public override onlyOwner {
