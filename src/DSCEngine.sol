@@ -46,7 +46,7 @@ contract DSCEngine is ReentrancyGuard {
     mapping(address token => address priceFeed) private s_priceFeeds;
     mapping(address user => mapping(address token => uint256 amount)) private s_collateralDeposited;
     mapping(address user => uint256 dscAmountMinted) private s_DSCMinted;
-    address[] private s_collateralTokens;
+    address[] private s_collateralTokens; //0 - ETH, 1 - BTC
     DecentralizedStablecoin private immutable i_dsc;
 
     /*//////////////////////////////////////////////////////////////
@@ -72,18 +72,18 @@ contract DSCEngine is ReentrancyGuard {
                                FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses) {
+    constructor(address[] memory tokenAddresses, address[] memory priceFeedAddresses, address dsc) {
         // USD Backed price feeds
         if (tokenAddresses.length != priceFeedAddresses.length) {
             revert DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength();
         }
-        // ETH/USD, BTC/USD, MKR/USD
+        // ETH/USD, BTC/USD, MKR/USD...
         for (uint256 i = 0; i < tokenAddresses.length; i++) {
             s_priceFeeds[tokenAddresses[i]] = priceFeedAddresses[i];
             s_collateralTokens.push(tokenAddresses[i]);
         }
-        i_dsc = new DecentralizedStablecoin();
-        i_dsc.transferOwnership(address(this));
+        i_dsc = DecentralizedStablecoin(dsc);
+        // i_dsc.transferOwnership(address(this));
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -198,4 +198,8 @@ contract DSCEngine is ReentrancyGuard {
         uint256 price = uint256(answer) * ADDITION_FEED_PRECISION;
         return amount * price / PRECISION;
     }
+
+    function getCollateralTokens() public view returns(address [] memory){
+        return s_collateralTokens;
+    } 
 }

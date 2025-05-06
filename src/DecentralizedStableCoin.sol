@@ -18,8 +18,8 @@ contract DecentralizedStablecoin is ERC20Burnable, Ownable {
     error DecentralizedStablecoin__BurnAmountExceedsBalance();
     error DecentralizedStablecoin__NotZeroAddress();
 
-    string constant NAME = "Decentralized Stable coin";
-    string constant SYMBOL = "DSC";
+    string public constant NAME = "Decentralized Stable coin";
+    string public constant SYMBOL = "DSC";
 
     //Intial owner of this token is the DSC Engine, that'll going to govern the mechanics of this token
     constructor() ERC20(NAME, SYMBOL) Ownable(msg.sender) {}

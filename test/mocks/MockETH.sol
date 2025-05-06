@@ -8,8 +8,8 @@ contract WETH is ERC20 {
     string public constant NAME = "Wrapped Ether";
     string public constant SYMBOL = "WETH";
 
-    constructor() ERC20(NAME, SYMBOL) {
-        _mint(msg.sender, INITIAL_SUPPLY);
+    constructor(address initialAccount) ERC20(NAME, SYMBOL) {
+        _mint(initialAccount, INITIAL_SUPPLY);
     }
 
     function mint(address to, uint256 value) public {
