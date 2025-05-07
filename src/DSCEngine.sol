@@ -58,7 +58,9 @@ contract DSCEngine is ReentrancyGuard {
     event CollateralDeposited(address indexed user, address indexed collateralToken, uint256 amount);
     event DSCMinted(address indexed user, uint256 amount);
     event DSCBurned(address indexed user, uint256 amount);
-    event CollateralRedeemed(address indexed redeemedFrom, address indexed redeemedTo, address indexed collateralToken, uint256 amount);
+    event CollateralRedeemed(
+        address indexed redeemedFrom, address indexed redeemedTo, address indexed collateralToken, uint256 amount
+    );
 
     /*//////////////////////////////////////////////////////////////
                                MODIFIERS
@@ -129,6 +131,7 @@ contract DSCEngine is ReentrancyGuard {
      * @param dscToMint - the amount of decentralized stable coin (DSC) to mint
      * @notice They must have more collateral value than the minimum threshold
      */
+
     function mintDSC(uint256 dscToMint) public moreThanZero(dscToMint) nonReentrant {
         s_DSCMinted[msg.sender] += dscToMint;
         //Health checkup
@@ -171,7 +174,7 @@ contract DSCEngine is ReentrancyGuard {
 
     function burnDSC(uint256 dscToBurn) public moreThanZero(dscToBurn) nonReentrant {
         _burnDSC(dscToBurn, msg.sender, msg.sender);
-         (msg.sender);
+        (msg.sender);
         emit DSCBurned(msg.sender, dscToBurn);
     }
 
@@ -221,10 +224,9 @@ contract DSCEngine is ReentrancyGuard {
         uint256 endingUserHealthFactor = _healthFactor(user);
         if (endingUserHealthFactor <= startingUserHealthFactor) revert DSCEngine__HealthFactorNotImproved();
         _revertIfHealthFactorIsBroken(msg.sender);
-
     }
 
-    function getHealthFactor() external view returns(uint256){
+    function getHealthFactor() external view returns (uint256) {
         return _healthFactor(msg.sender);
     }
 
@@ -271,10 +273,11 @@ contract DSCEngine is ReentrancyGuard {
         if (!success) revert DSCEngine__TransferFailed();
     }
     /**
-     * @dev Low level internal function, do not call unless the function calling it is checking for 
+     * @dev Low level internal function, do not call unless the function calling it is checking for
      * health factor
      */
-    function _burnDSC(uint amountDscToBurn, address onBehalfOf, address dscFrom) private {
+
+    function _burnDSC(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) private {
         s_DSCMinted[onBehalfOf] -= amountDscToBurn;
         //transfer dsc from user to this contract first
         bool success = i_dsc.transferFrom(dscFrom, address(this), amountDscToBurn);

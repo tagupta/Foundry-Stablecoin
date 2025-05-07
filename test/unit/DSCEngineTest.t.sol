@@ -34,9 +34,10 @@ contract DSCEngineTest is Test {
     /*//////////////////////////////////////////////////////////////
                             CONSTRUCTOR TEST
     //////////////////////////////////////////////////////////////*/
+
     address[] tokenAddresses;
     address[] priceFeedAddresses;
-    
+
     function test_Revert_IfTokenLengthDoesnotMatchPriceFeeds() external {
         tokenAddresses.push(weth);
         priceFeedAddresses.push(ethUsdPriceFeed);
