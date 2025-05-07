@@ -21,13 +21,28 @@ contract DSCEngineTest is Test {
     uint256 constant INITIAL_ALLOWANCE = 10 ether;
     address weth;
     address ethUsdPriceFeed;
+    address btcUsdPriceFeed;
 
     function setUp() external {
         DeployDSC deployer = new DeployDSC();
         (dsc, engine, tokens, feeds) = deployer.run();
         weth = tokens[0];
         ethUsdPriceFeed = feeds[0];
+        btcUsdPriceFeed = feeds[1];
         ERC20Mock(weth).mint(USER, INITIAL_VALUE);
+    }
+    /*//////////////////////////////////////////////////////////////
+                            CONSTRUCTOR TEST
+    //////////////////////////////////////////////////////////////*/
+    address[] tokenAddresses;
+    address[] priceFeedAddresses;
+    
+    function test_Revert_IfTokenLengthDoesnotMatchPriceFeeds() external {
+        tokenAddresses.push(weth);
+        priceFeedAddresses.push(ethUsdPriceFeed);
+        priceFeedAddresses.push(btcUsdPriceFeed);
+        vm.expectRevert(DSCEngine.DSCEngine__TokenAddressesAndPriceFeedAddressesMustBeSameLength.selector);
+        new DSCEngine(tokenAddresses, priceFeedAddresses, address(dsc));
     }
     /*//////////////////////////////////////////////////////////////
                                PRICE TEST
