@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity ^0.8.0;
 
-import {Test, console} from 'forge-std/Test.sol';
-import {DecentralizedStablecoin} from 'src/DecentralizedStablecoin.sol';
-import {DSCEngine} from 'src/DSCEngine.sol';
-import {DeployDSC} from 'script/DeployDSC.s.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
-import {ERC20Mock} from '@openzeppelin/contracts/mocks/token/ERC20Mock.sol';
-import {IERC20Errors} from '@openzeppelin/contracts/interfaces/draft-IERC6093.sol';
+import {Test, console} from "forge-std/Test.sol";
+import {DecentralizedStablecoin} from "src/DecentralizedStablecoin.sol";
+import {DSCEngine} from "src/DSCEngine.sol";
+import {DeployDSC} from "script/DeployDSC.s.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {Vm} from "forge-std/Vm.sol";
-
 
 contract DSCEngineTest is Test {
     DecentralizedStablecoin dsc;
@@ -18,8 +17,8 @@ contract DSCEngineTest is Test {
     address[] feeds;
     address USER = makeAddr("user");
     address ANY_COLLATERAL = makeAddr("collateral");
-    uint constant INITIAL_VALUE = 10 ether;
-    uint constant INITIAL_ALLOWANCE = 10 ether;
+    uint256 constant INITIAL_VALUE = 10 ether;
+    uint256 constant INITIAL_ALLOWANCE = 10 ether;
     address weth;
     address ethUsdPriceFeed;
 
@@ -33,11 +32,12 @@ contract DSCEngineTest is Test {
     /*//////////////////////////////////////////////////////////////
                                PRICE TEST
     //////////////////////////////////////////////////////////////*/
-    function testGetTokenUSDValue() external view{
+
+    function testGetTokenUSDValue() external view {
         uint256 ethAmount = 15e18;
         // 15e18 * 2000 = 30,000 e18
-        uint expectedPrice = 30_000e18;
-        uint resultantPrice = engine.getTokenUSDValue(weth, ethAmount);
+        uint256 expectedPrice = 30_000e18;
+        uint256 resultantPrice = engine.getTokenUSDValue(weth, ethAmount);
         assertEq(expectedPrice, resultantPrice);
     }
 
@@ -59,23 +59,23 @@ contract DSCEngineTest is Test {
     /*//////////////////////////////////////////////////////////////
                            BASIC ENGINE TESTS
     //////////////////////////////////////////////////////////////*/
-     function testMintEth() external view{
-        assertEq(ERC20Mock(weth).balanceOf(USER),INITIAL_VALUE);
+    function testMintEth() external view {
+        assertEq(ERC20Mock(weth).balanceOf(USER), INITIAL_VALUE);
     }
 
     function testMintBtc() external {
         vm.prank(USER);
         address wbtc = tokens[1];
         ERC20Mock(wbtc).mint(USER, INITIAL_VALUE);
-        assertEq(ERC20Mock(wbtc).balanceOf(USER),INITIAL_VALUE);
+        assertEq(ERC20Mock(wbtc).balanceOf(USER), INITIAL_VALUE);
     }
 
     function testOnlyEngineCanCallMintDSC() external {
         bytes memory expectedError = abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER);
         vm.expectRevert(expectedError);
         vm.prank(USER);
-        dsc.mint(USER,INITIAL_VALUE);
-    } 
+        dsc.mint(USER, INITIAL_VALUE);
+    }
 
     function testOnlyEngineCanCallBurnDSC() external {
         bytes memory expectedError = abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, USER);
@@ -88,7 +88,7 @@ contract DSCEngineTest is Test {
                         DEPOSIT COLLATERAL TESTS
     //////////////////////////////////////////////////////////////*/
     function test_Revert_IfCollateralZero() external {
-        uint amountCollateral = 0;
+        uint256 amountCollateral = 0;
         ERC20Mock(weth).approve(address(engine), INITIAL_ALLOWANCE);
         vm.expectRevert(DSCEngine.DSCEngine__MustBeMoreThanZero.selector);
         vm.prank(USER);
@@ -98,15 +98,16 @@ contract DSCEngineTest is Test {
     function testDepositCollateralIsNotAllowedForRandomAddress() external {
         vm.expectRevert(DSCEngine.DSCEngine__TokenNotAllowedAsCollateral.selector);
         vm.prank(USER);
-        engine.depositCollateral(ANY_COLLATERAL,INITIAL_VALUE);
+        engine.depositCollateral(ANY_COLLATERAL, INITIAL_VALUE);
     }
 
     function test_Revert_IfDepositEthCollateralWithoutApproval() external {
         address spender = address(engine);
-        uint currentAllowance = 0;
-        uint value = INITIAL_VALUE;
+        uint256 currentAllowance = 0;
+        uint256 value = INITIAL_VALUE;
 
-        bytes memory expectedError = abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector,spender, currentAllowance,value);
+        bytes memory expectedError =
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, spender, currentAllowance, value);
         vm.prank(USER);
         vm.expectRevert(expectedError);
         engine.depositCollateral(weth, INITIAL_VALUE);
@@ -121,7 +122,9 @@ contract DSCEngineTest is Test {
     function testDepositEthCollateral() external {
         vm.startPrank(USER);
         ERC20Mock(weth).approve(address(engine), INITIAL_ALLOWANCE);
+
         assertEq(ERC20Mock(weth).allowance(USER, address(engine)), INITIAL_ALLOWANCE);
+
         vm.recordLogs();
         engine.depositCollateral(weth, INITIAL_VALUE);
         vm.stopPrank();
@@ -130,8 +133,8 @@ contract DSCEngineTest is Test {
 
         bytes32 eventSig = keccak256("CollateralDeposited(address,address,uint256)");
 
-        for(uint i = 0; i < logs.length ; i++){
-            if(logs[i].topics[0] == eventSig){
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == eventSig) {
                 address caller = address(uint160(uint256(logs[i].topics[1])));
                 address token = address(uint160(uint256(logs[i].topics[2])));
                 assertEq(caller, USER, "Caller is USER address");

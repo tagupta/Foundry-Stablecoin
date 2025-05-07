@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import {Script} from "forge-std/Script.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/shared/mocks/MockV3Aggregator.sol";
-import { ERC20Mock } from "test/mocks/ERC20Mock.sol";
+import {ERC20Mock} from "test/mocks/ERC20Mock.sol";
 
-import {WETH} from 'test/mocks/MockETH.sol';
-import {WBTC} from 'test/mocks/MockBTC.sol';
+import {WETH} from "test/mocks/MockETH.sol";
+import {WBTC} from "test/mocks/MockBTC.sol";
 
 contract HelperConfig is Script {
     enum Token {
@@ -17,7 +17,7 @@ contract HelperConfig is Script {
     struct NetworkConfig {
         mapping(Token => address) tokenAddresses;
         mapping(Token => address) priceFeeds;
-        uint deployerKey;
+        uint256 deployerKey;
     }
 
     NetworkConfig private activeNetworkConfig;
@@ -29,8 +29,7 @@ contract HelperConfig is Script {
     uint256 public constant MAINNET_CHAIN_ID = 1;
     uint256 public DEFAULT_ANVIL_PRIVATE_KEY = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
 
-
-   constructor() {
+    constructor() {
         if (block.chainid == SEPOLIA_CHAIN_ID) {
             _setupSepoliaConfig();
         } else if (block.chainid == MAINNET_CHAIN_ID) {
@@ -40,16 +39,16 @@ contract HelperConfig is Script {
         }
     }
 
-       function getNetworkConfig() 
-        external 
-        view 
-        returns (address[] memory tokens, address[] memory feeds, uint256 deployerKey) 
-    {   
+    function getNetworkConfig()
+        external
+        view
+        returns (address[] memory tokens, address[] memory feeds, uint256 deployerKey)
+    {
         tokens = new address[](2);
         feeds = new address[](2);
         tokens[0] = activeNetworkConfig.tokenAddresses[Token.ETH];
         tokens[1] = activeNetworkConfig.tokenAddresses[Token.BTC];
-        feeds[0] =  activeNetworkConfig.priceFeeds[Token.ETH];
+        feeds[0] = activeNetworkConfig.priceFeeds[Token.ETH];
         feeds[1] = activeNetworkConfig.priceFeeds[Token.BTC];
         deployerKey = activeNetworkConfig.deployerKey;
     }
@@ -75,27 +74,23 @@ contract HelperConfig is Script {
     }
 
     function _setupAnvilConfig() internal {
-        if (
-            activeNetworkConfig.priceFeeds[Token.ETH] != address(0)
-        ) return;
+        if (activeNetworkConfig.priceFeeds[Token.ETH] != address(0)) return;
 
         vm.startBroadcast();
 
         MockV3Aggregator ethUsdPriceFeed = new MockV3Aggregator(DECIMALS, INITIAL_PRICE_ETH);
         ERC20Mock weth = new ERC20Mock("Wrapped Ether", "WETH", msg.sender, 1000e8);
 
-        MockV3Aggregator btcUsdPriceFeed = new MockV3Aggregator(DECIMALS,INITIAL_PRICE_BTC);
+        MockV3Aggregator btcUsdPriceFeed = new MockV3Aggregator(DECIMALS, INITIAL_PRICE_BTC);
         ERC20Mock wbtc = new ERC20Mock("Wrapped Bitcoin", "WBTC", msg.sender, 1000e8);
 
         vm.stopBroadcast();
-        
+
         activeNetworkConfig.tokenAddresses[Token.ETH] = address(weth);
         activeNetworkConfig.tokenAddresses[Token.BTC] = address(wbtc);
 
         activeNetworkConfig.priceFeeds[Token.ETH] = address(ethUsdPriceFeed);
         activeNetworkConfig.priceFeeds[Token.BTC] = address(btcUsdPriceFeed);
         activeNetworkConfig.deployerKey = DEFAULT_ANVIL_PRIVATE_KEY;
-
-        
     }
 }
