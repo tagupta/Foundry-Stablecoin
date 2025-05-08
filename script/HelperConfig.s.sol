@@ -5,9 +5,6 @@ import {Script} from "forge-std/Script.sol";
 import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/shared/mocks/MockV3Aggregator.sol";
 import {ERC20Mock} from "test/mocks/ERC20Mock.sol";
 
-import {WETH} from "test/mocks/MockETH.sol";
-import {WBTC} from "test/mocks/MockBTC.sol";
-
 contract HelperConfig is Script {
     enum Token {
         ETH,

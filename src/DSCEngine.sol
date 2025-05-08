@@ -286,7 +286,7 @@ contract DSCEngine is ReentrancyGuard {
     }
 
     /*//////////////////////////////////////////////////////////////
-                            PUBLIC VIEW FUNCTION
+                            PUBLIC/EXTERNAL VIEW FUNCTION
     //////////////////////////////////////////////////////////////*/
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface dataFeed = AggregatorV3Interface(s_priceFeeds[token]);
@@ -318,5 +318,13 @@ contract DSCEngine is ReentrancyGuard {
         (, int256 answer,,,) = dataFeed.latestRoundData();
         uint256 price = uint256(answer) * ADDITION_FEED_PRECISION;
         return amount * price / PRECISION;
+    }
+
+    function getAccountInfo(address user) external view returns (uint256, uint256) {
+        return _getAccountInformation(user);
+    }
+
+    function getCollateralDeposited(address user, address collateral) public view returns (uint256) {
+        return s_collateralDeposited[user][collateral];
     }
 }
