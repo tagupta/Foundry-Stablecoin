@@ -234,7 +234,7 @@ contract DSCEngine is ReentrancyGuard {
      * If a user goes below 1, they can get liquidated
      */
     function _healthFactor(address user) private view returns (uint256) {
-        (uint256 totalDscMinted, uint256 totalCollateralValueInUSD) = _getAccountInformation(user);    
+        (uint256 totalDscMinted, uint256 totalCollateralValueInUSD) = _getAccountInformation(user);
         return _calculatedHealthFactor(totalDscMinted, totalCollateralValueInUSD);
     }
 
@@ -356,5 +356,9 @@ contract DSCEngine is ReentrancyGuard {
 
     function getLiquidationBonus() external pure returns (uint256) {
         return LIQUIDATION_BONUS;
+    }
+
+    function getCollateralTokens() external view returns (address[] memory) {
+        return s_collateralTokens;
     }
 }

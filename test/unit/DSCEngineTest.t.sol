@@ -459,8 +459,10 @@ contract DSCEngineTest is Test {
         uint256 hfLiquid = engine.getHealthFactor(LIQUIDATOR);
         assertLt(hfLiquid, engine.getMinHealthFactor(), "Health factor should be broken");
 
-        uint healthFactorLiquidator = engine.getHealthFactor(LIQUIDATOR);
-        vm.expectRevert(abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorBroken.selector, LIQUIDATOR, healthFactorLiquidator));
+        uint256 healthFactorLiquidator = engine.getHealthFactor(LIQUIDATOR);
+        vm.expectRevert(
+            abi.encodeWithSelector(DSCEngine.DSCEngine__HealthFactorBroken.selector, LIQUIDATOR, healthFactorLiquidator)
+        );
         vm.prank(LIQUIDATOR);
         engine.liquidate(weth, USER, dscToCover);
     }
