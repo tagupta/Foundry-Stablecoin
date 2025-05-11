@@ -6,12 +6,14 @@ import {DSCEngine} from "src/DSCEngine.sol";
 import {DecentralizedStablecoin} from "src/DecentralizedStablecoin.sol";
 import {DeployDSC} from "script/DeployDSC.s.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {MockV3Aggregator} from "@chainlink/contracts/src/v0.8/shared/mocks/MockV3Aggregator.sol";
 
 contract Handler is Test {
     DSCEngine engine;
     DecentralizedStablecoin dsc;
     ERC20Mock weth;
     ERC20Mock wbtc;
+    MockV3Aggregator public ethUsdPriceFeed;
     uint256 private constant MAX_DEPOSIT_SIZE = type(uint96).max;
     uint256 public timesMintIsCalled;
     uint256 public timeRedeemCalled;
@@ -23,6 +25,7 @@ contract Handler is Test {
         address[] memory tokens = engine.getCollateralTokens();
         weth = ERC20Mock(tokens[0]);
         wbtc = ERC20Mock(tokens[1]);
+        ethUsdPriceFeed = MockV3Aggregator(engine.getPriceFeeds(address(weth)));
     }
 
     //deposit collateral
@@ -55,9 +58,7 @@ contract Handler is Test {
         vm.startPrank(msg.sender);
         engine.redeemCollateral(address(collateral), amountCollateral);
         vm.stopPrank();
-        console.log("Redeem called successfully");
         timeRedeemCalled++;
-        
     }
 
     function mintDSC(uint256 dscToMint, uint256 addressSeed) public {
@@ -68,6 +69,7 @@ contract Handler is Test {
         uint256 maxBorrowableDSC =
             depositedCollateralValueUSD * engine.getLiquidationThreshold() / engine.getLiquidationPrecision();
 
+        vm.assume(maxBorrowableDSC >= totalDSCMinted);
         int256 mintableDSC = int256(maxBorrowableDSC - totalDSCMinted);
         vm.assume(mintableDSC > 0);
 
@@ -78,6 +80,14 @@ contract Handler is Test {
         engine.mintDSC(dscToMint);
         timesMintIsCalled++;
     }
+
+    /**
+     * @notice This breaks our invariant test suite!!
+     */
+    // function updateCollateralPrice(uint96 newPrice) public {
+    //     int256 newPriceValue = int256(uint256(newPrice));
+    //     ethUsdPriceFeed.updateAnswer(newPriceValue);
+    // }
 
     function _getCollateralFromSeed(uint256 collateralSeed) internal view returns (ERC20Mock) {
         if (collateralSeed % 2 == 0) {

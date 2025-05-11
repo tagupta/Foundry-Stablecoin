@@ -6,6 +6,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {console} from "forge-std/console.sol";
+import {OracleLib} from 'src/libraries/OracleLib.sol';
 
 /**
  * @title DSCEngine
@@ -37,6 +38,10 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__DSCMintingFailed();
     error DSCEngine__HealthFactorOk();
     error DSCEngine__HealthFactorNotImproved();
+    /*//////////////////////////////////////////////////////////////
+                                 TYPES
+    //////////////////////////////////////////////////////////////*/
+    using OracleLib for AggregatorV3Interface;
 
     /*//////////////////////////////////////////////////////////////
                             STATE VARIABLES
@@ -289,7 +294,7 @@ contract DSCEngine is ReentrancyGuard {
     //////////////////////////////////////////////////////////////*/
     function getTokenAmountFromUsd(address token, uint256 usdAmountInWei) public view returns (uint256) {
         AggregatorV3Interface dataFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 answer,,,) = dataFeed.latestRoundData();
+        (, int256 answer,,,) = dataFeed.staleCheckLatestRoundData();
         uint256 price = uint256(answer) * ADDITION_FEED_PRECISION;
 
         return (PRECISION * usdAmountInWei / price);
@@ -314,7 +319,7 @@ contract DSCEngine is ReentrancyGuard {
      */
     function getTokenUSDValue(address token, uint256 amount) public view returns (uint256) {
         AggregatorV3Interface dataFeed = AggregatorV3Interface(s_priceFeeds[token]);
-        (, int256 answer,,,) = dataFeed.latestRoundData();
+        (, int256 answer,,,) = dataFeed.staleCheckLatestRoundData();
         uint256 price = uint256(answer) * ADDITION_FEED_PRECISION;
         return amount * price / PRECISION;
     }
@@ -341,6 +346,10 @@ contract DSCEngine is ReentrancyGuard {
         returns (uint256)
     {
         return _calculatedHealthFactor(totalMintedDSC, collateralValueInUSD);
+    }
+
+    function getPriceFeeds(address token) external view returns (address) {
+        return s_priceFeeds[token];
     }
 
     function getPrecision() external pure returns (uint256) {
