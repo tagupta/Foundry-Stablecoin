@@ -1,4 +1,4 @@
-// // SPDX-License-Identifier: SEE LICENSE IN LICENSE
+// SPDX-License-Identifier: SEE LICENSE IN LICENSE
 // pragma solidity ^0.8.19;
 // //Have our invariants aka properties that hold true for all the time
 

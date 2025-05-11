@@ -13,6 +13,9 @@ contract Handler is Test {
     ERC20Mock weth;
     ERC20Mock wbtc;
     uint256 private constant MAX_DEPOSIT_SIZE = type(uint96).max;
+    uint256 public timesMintIsCalled;
+    uint256 public timeRedeemCalled;
+    address[] public usersWhoDepositedCollateral;
 
     constructor(DSCEngine _engine, DecentralizedStablecoin _dsc) {
         engine = _engine;
@@ -32,6 +35,48 @@ contract Handler is Test {
         collateral.approve(address(engine), amountCollateral);
         engine.depositCollateral(address(collateral), amountCollateral);
         vm.stopPrank();
+        //double push can happen
+        usersWhoDepositedCollateral.push(msg.sender);
+    }
+
+    function redeemCollateral(uint256 collateralSeed, uint256 amountCollateral) public {
+        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+        uint256 maxCollateralToRedeem = engine.getCollateralDeposited(msg.sender, address(collateral));
+        amountCollateral = bound(amountCollateral, 0, maxCollateralToRedeem);
+
+        vm.assume(amountCollateral != 0);
+
+        (uint256 totalDscMinted, uint256 totalCollateralValueInUsd) = engine.getAccountInfo(msg.sender);
+        uint256 collateralValueInUsd = engine.getTokenUSDValue(address(collateral), amountCollateral);
+        uint256 healthFactor =
+            engine.calculateHealthFactor(totalDscMinted, totalCollateralValueInUsd - collateralValueInUsd);
+        vm.assume(healthFactor >= engine.getMinHealthFactor());
+
+        vm.startPrank(msg.sender);
+        engine.redeemCollateral(address(collateral), amountCollateral);
+        vm.stopPrank();
+        console.log("Redeem called successfully");
+        timeRedeemCalled++;
+        
+    }
+
+    function mintDSC(uint256 dscToMint, uint256 addressSeed) public {
+        if (usersWhoDepositedCollateral.length <= 0) return;
+        address sender = usersWhoDepositedCollateral[addressSeed % usersWhoDepositedCollateral.length];
+
+        (uint256 totalDSCMinted, uint256 depositedCollateralValueUSD) = engine.getAccountInfo(sender);
+        uint256 maxBorrowableDSC =
+            depositedCollateralValueUSD * engine.getLiquidationThreshold() / engine.getLiquidationPrecision();
+
+        int256 mintableDSC = int256(maxBorrowableDSC - totalDSCMinted);
+        vm.assume(mintableDSC > 0);
+
+        dscToMint = bound(dscToMint, 0, uint256(mintableDSC));
+        vm.assume(dscToMint != 0);
+
+        vm.prank(sender);
+        engine.mintDSC(dscToMint);
+        timesMintIsCalled++;
     }
 
     function _getCollateralFromSeed(uint256 collateralSeed) internal view returns (ERC20Mock) {

@@ -6,7 +6,7 @@ pragma solidity ^0.8.19;
 
 //1. The total supply of DSC should be less than the total value of collateral.
 //2. Getter view functions should never revert <- evergreen invariant
-import {Test} from "forge-std/Test.sol";
+import {Test, console} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {DecentralizedStablecoin} from "src/DecentralizedStablecoin.sol";
 import {DSCEngine} from "src/DSCEngine.sol";
@@ -33,7 +33,7 @@ contract Invariants is StdInvariant, Test {
         targetContract(address(handler));
     }
 
-    function invariant_protocolMustHaveMoreValueThanTotalSupply() public view {
+    function invariant_protocolMustHaveMoreValueThanTotalDSCSupply() public view {
         uint256 totalDSCSupply = dsc.totalSupply();
 
         uint256 totalWETHDeposited = IERC20(weth).balanceOf(address(engine));
@@ -41,6 +41,10 @@ contract Invariants is StdInvariant, Test {
 
         uint256 wethValueInUSD = engine.getTokenUSDValue(address(weth), totalWETHDeposited);
         uint256 wbtcValueInUSD = engine.getTokenUSDValue(address(wbtc), totalWBTCDeposited);
+
+        console.log("Total Supply: ", totalDSCSupply);
+        console.log("Times DSC called: ", handler.timesMintIsCalled());
+        console.log("Times Redeem called: ", handler.timeRedeemCalled());
 
         assert(wethValueInUSD + wbtcValueInUSD >= totalDSCSupply);
     }
