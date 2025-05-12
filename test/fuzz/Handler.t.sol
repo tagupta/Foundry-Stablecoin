@@ -81,6 +81,31 @@ contract Handler is Test {
         timesMintIsCalled++;
     }
 
+    function burnDSC(uint256 dscToBurn) public {
+        (uint totalMintedDSC, ) = engine.getAccountInfo(msg.sender);
+        dscToBurn = bound(dscToBurn, 0, totalMintedDSC);
+        vm.assume(dscToBurn != 0);
+        vm.startPrank(msg.sender);
+        dsc.approve(address(engine),dscToBurn);
+        engine.burnDSC(dscToBurn);
+        vm.stopPrank();
+    }
+
+    function liquidate(uint256 collateralSeed, address userToLiquidate, uint256 debtToCover) public {
+        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+        uint256 userHealthFactor = engine.getHealthFactor(userToLiquidate);
+        vm.assume(userHealthFactor < engine.getMinHealthFactor());
+
+        (uint totalMintedDSC, ) = engine.getAccountInfo(userToLiquidate);
+        debtToCover = bound(debtToCover, 0, totalMintedDSC);
+        vm.assume(debtToCover != 0);
+        
+        vm.startPrank(msg.sender);
+        dsc.approve(address(engine), debtToCover);
+        engine.liquidate(address(collateral), userToLiquidate, debtToCover);
+        vm.stopPrank();
+    }
+
     /**
      * @notice This breaks our invariant test suite!!
      */
