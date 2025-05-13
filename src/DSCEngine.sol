@@ -6,7 +6,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {console} from "forge-std/console.sol";
-import {OracleLib} from 'src/libraries/OracleLib.sol';
+import {OracleLib} from "src/libraries/OracleLib.sol";
 
 /**
  * @title DSCEngine
@@ -37,10 +37,11 @@ contract DSCEngine is ReentrancyGuard {
     error DSCEngine__HealthFactorBroken(address user, uint256 healthFactor);
     error DSCEngine__DSCMintingFailed();
     error DSCEngine__HealthFactorOk();
-    error DSCEngine__HealthFactorNotImproved();
+    error DSCEngine__HealthFactorNotImproved(uint256 startingHealthFactor, uint256 endingHealthFactor);
     /*//////////////////////////////////////////////////////////////
                                  TYPES
     //////////////////////////////////////////////////////////////*/
+
     using OracleLib for AggregatorV3Interface;
 
     /*//////////////////////////////////////////////////////////////
@@ -200,35 +201,43 @@ contract DSCEngine is ReentrancyGuard {
         isAllowedToken(collateral)
         nonReentrant
     {
-        // if the health factor is less than 1
-        // getAccountInfo - total minted DSC, total collateral value
-        // collateral will get transferred to caller
-        // trasnferfrom DSC from caller to this contract, burn DSC.
-
         // Check the health factor of the user.
         uint256 startingUserHealthFactor = _healthFactor(user);
         if (startingUserHealthFactor >= MIN_HEALTH_FACTOR) revert DSCEngine__HealthFactorOk();
 
-        // We want to burn their DSC debt
-        // And take their collateral
-        // Bad user 140$ ETH,100$ DSC
-        // debtToCover => 100$DSC
-        uint256 tokenAmountFromDebtToCover = getTokenAmountFromUsd(collateral, debtToCover);
+        (uint256 totalDebt, uint256 totalCollateralValue) = _getAccountInformation(user);
 
-        //give them a bonus worth of 10%
-        //so we will give them $110 WETH for $100 of DSC
-        // implement a feature to liquidate in the event the protocol is insolvent
-        // and sweep extra amount into treasury
+        // Calculate MAX debt that can be covered (considering threshold)
+        uint256 maxDebtByCollateral = (totalCollateralValue * LIQUIDATION_THRESHOLD) / LIQUIDATION_PRECISION;
 
-        uint256 bonusCollateral = tokenAmountFromDebtToCover * LIQUIDATION_BONUS / LIQUIDATION_PRECISION;
-        uint256 totalCollateralToRedeem = tokenAmountFromDebtToCover + bonusCollateral;
-        //liquidator will redeem totalCollateralToRedeem collateral
+        // Apply both caps: collateral-based limit AND actual debt
+        debtToCover = debtToCover > maxDebtByCollateral ? maxDebtByCollateral : debtToCover;
+        debtToCover = debtToCover > totalDebt ? totalDebt : debtToCover;
+
+        //Calculate collateral to remove (in USD terms)
+        uint256 totalCollateralToRedeem = getTokenAmountFromUsd(collateral, debtToCover);
+        uint256 bonusCollateral = totalCollateralToRedeem * LIQUIDATION_BONUS / LIQUIDATION_PRECISION;
+        totalCollateralToRedeem += bonusCollateral;
+
+        //Calculate MAX collateral value that can be removed (threshold-aware)
+        uint256 maxAllowedTokensToRemove =
+            getTokenAmountFromUsd(collateral, (debtToCover * LIQUIDATION_PRECISION) / LIQUIDATION_THRESHOLD);
+
+        uint256 totalCollateralDeposited = s_collateralDeposited[user][collateral];
+
+        totalCollateralToRedeem =
+            totalCollateralToRedeem > maxAllowedTokensToRemove ? maxAllowedTokensToRemove : totalCollateralToRedeem;
+        totalCollateralToRedeem =
+            totalCollateralToRedeem > totalCollateralDeposited ? totalCollateralDeposited : totalCollateralToRedeem;
+
         _redeemCollateral(user, msg.sender, collateral, totalCollateralToRedeem);
-        //liquidator will burn the debtToCover DSC for this user
+
         _burnDSC(debtToCover, user, msg.sender);
-        //Not working -: DSCMinted => 0 => division by Zero error
+
         uint256 endingUserHealthFactor = _healthFactor(user);
-        if (endingUserHealthFactor <= startingUserHealthFactor) revert DSCEngine__HealthFactorNotImproved();
+        if (endingUserHealthFactor < MIN_HEALTH_FACTOR) {
+            revert DSCEngine__HealthFactorNotImproved(startingUserHealthFactor, endingUserHealthFactor);
+        }
         _revertIfHealthFactorIsBroken(msg.sender);
     }
 
@@ -274,9 +283,13 @@ contract DSCEngine is ReentrancyGuard {
 
     function _burnDSC(uint256 amountDscToBurn, address onBehalfOf, address dscFrom) private {
         s_DSCMinted[onBehalfOf] -= amountDscToBurn;
+        console.log("amountDscToBurn: ", amountDscToBurn);
+        console.log("DSC Owned: ", i_dsc.balanceOf(dscFrom));
         bool success = i_dsc.transferFrom(dscFrom, address(this), amountDscToBurn);
         if (!success) revert DSCEngine__TransferFailed();
+        console.log("Burning here with amount: ", amountDscToBurn);
         i_dsc.burn(amountDscToBurn);
+        console.log("Done Burning tokens");
     }
 
     function _calculatedHealthFactor(uint256 totalDSCMinted, uint256 collateralValueInUSD)

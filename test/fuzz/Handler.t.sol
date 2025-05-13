@@ -82,24 +82,28 @@ contract Handler is Test {
     }
 
     function burnDSC(uint256 dscToBurn) public {
-        (uint totalMintedDSC, ) = engine.getAccountInfo(msg.sender);
+        (uint256 totalMintedDSC,) = engine.getAccountInfo(msg.sender);
         dscToBurn = bound(dscToBurn, 0, totalMintedDSC);
         vm.assume(dscToBurn != 0);
         vm.startPrank(msg.sender);
-        dsc.approve(address(engine),dscToBurn);
+        dsc.approve(address(engine), dscToBurn);
         engine.burnDSC(dscToBurn);
         vm.stopPrank();
     }
 
     function liquidate(uint256 collateralSeed, address userToLiquidate, uint256 debtToCover) public {
+        vm.assume(msg.sender != userToLiquidate);
         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
         uint256 userHealthFactor = engine.getHealthFactor(userToLiquidate);
         vm.assume(userHealthFactor < engine.getMinHealthFactor());
 
-        (uint totalMintedDSC, ) = engine.getAccountInfo(userToLiquidate);
+        (uint256 totalMintedDSC,) = engine.getAccountInfo(userToLiquidate);
         debtToCover = bound(debtToCover, 0, totalMintedDSC);
         vm.assume(debtToCover != 0);
-        
+
+        vm.prank(dsc.owner());
+        dsc.mint(msg.sender, debtToCover);
+
         vm.startPrank(msg.sender);
         dsc.approve(address(engine), debtToCover);
         engine.liquidate(address(collateral), userToLiquidate, debtToCover);
@@ -113,6 +117,39 @@ contract Handler is Test {
     //     int256 newPriceValue = int256(uint256(newPrice));
     //     ethUsdPriceFeed.updateAnswer(newPriceValue);
     // }
+    function updateCollateralPrice(uint96 newPrice, uint256 collateralSeed) public {
+        ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+        MockV3Aggregator priceFeed = MockV3Aggregator(engine.getPriceFeeds(address(collateral)));
+
+        // 1. Get current price with overflow protection
+        int256 currentPrice = priceFeed.latestAnswer();
+
+        // 2. Check price is positive and fits in uint96
+        vm.assume(currentPrice > 0);
+        vm.assume(currentPrice <= int256(uint256(type(uint96).max)));
+
+        // 3. Safe conversion to uint96
+        uint96 currentPriceU96 = uint96(uint256(currentPrice));
+
+        // 4. Calculate 80% of current price (safe math)
+        uint96 minAllowedPrice;
+        unchecked {
+            minAllowedPrice = currentPriceU96 - ((currentPriceU96 * 20) / 100);
+        }
+
+        // 5. Final assumption (no division needed)
+        vm.assume(newPrice >= minAllowedPrice);
+
+        // 6. Safe update (already guaranteed newPrice is uint96)
+        priceFeed.updateAnswer(int256(uint256(newPrice)));
+    }
+    // function updateCollateralPrice(uint96 newPrice, uint256 collateralSeed) public {
+    //         int256 intNewPrice = int256(uint256(newPrice));
+    //         ERC20Mock collateral = _getCollateralFromSeed(collateralSeed);
+    //         MockV3Aggregator priceFeed = MockV3Aggregator(engine.getPriceFeeds(address(collateral)));
+
+    //         priceFeed.updateAnswer(intNewPrice);
+    //     }
 
     function _getCollateralFromSeed(uint256 collateralSeed) internal view returns (ERC20Mock) {
         if (collateralSeed % 2 == 0) {
